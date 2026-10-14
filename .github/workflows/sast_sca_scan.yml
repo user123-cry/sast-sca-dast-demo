@@ -1,20 +1,19 @@
+
 name: SAST & SCA Scan
 
-on: 
+on:
   push:
-    branches: [ main ] # Runs on pushes to the main branch
-  workflow_dispatch: # Allows manual triggering from the Actions tab
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  # Job ID (can be anything descriptive)
   sast_sca_checks:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Shallow clones can cause SonarQube to miss changes in files.
-          # Fetch all history for accurate analysis.
           fetch-depth: 0
 
       - name: Set up Python
@@ -36,12 +35,9 @@ jobs:
             -Dsonar.organization=user123-cry
             -Dsonar.projectKey=sast-sca-dast-demo
             -Dsonar.sources=vulnerable_flask_app
-            
 
-      
-
-              - name: Run pip-audit
-          continue-on-error: true
-          run: |
-            pip install pip-audit
-            pip-audit -r vulnerable_flask_app/requirements.txt
+      - name: Run pip-audit
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r vulnerable_flask_app/requirements.txt
