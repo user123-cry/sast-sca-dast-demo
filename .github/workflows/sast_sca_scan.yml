@@ -36,11 +36,9 @@ jobs:
             -Dsonar.organization=user123-cry
             -Dsonar.projectKey=sast-sca-dast-demo
             -Dsonar.sources=vulnerable_flask_app
+            -Dsonar.qualitygate.wait=true
 
-      - name: SonarQube Quality Gate check
-        uses: sonarsource/sonarqube-quality-gate-action@v1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      
 
       - name: Run pip-audit
         # This step will run even if the previous SonarQube Quality Gate check step fails
