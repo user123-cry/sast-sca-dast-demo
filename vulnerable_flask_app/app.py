@@ -1,52 +1,64 @@
-from flask import Flask, request
+
+import os
 import subprocess
+from flask import Flask, request
+from markupsafe import escape
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = "verysecretkey123" # Hardcoded secret!
+app.config['SECRET_KEY'] = os.environ["SECRET_KEY"]
+
+ALLOWED = {
+    "date": ["date"],
+    "uptime": ["uptime"]
+}
+
+
+@app.after_request
+def security_headers(resp):
+    resp.headers["Content-Security-Policy"] = "default-src 'self'"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+
 
 @app.route('/')
 def index():
     return """
-    <h1>Welcome to our vulnerable Flask App! 😎</h1>
-    <p>Explore the different pages:</p>
+    <h1>Welcome to our Flask App!</h1>
     <ul>
-        <li><a href="/hello?name=World">Hello Page (try changing the name in the URL!)</a></li>
-        <li><a href="/execute?cmd=ls -la">Execute Command Page (try changing the command in the URL!)</a></li>
-        <li><a href="/admin">Admin Area (contains a secret!)</a></li>
+        <li><a href="/hello?name=World">Hello Page</a></li>
+        <li><a href="/execute?cmd=date">Execute Command Page</a></li>
     </ul>
-    
-    <a href="https://github.com/pandelig/sast-sca-dast-demo" target="_blank">GitHub Repo↗</a></li>
     """
+
 
 @app.route('/hello')
 def hello():
     name = request.args.get('name', 'Guest')
-    return f"""
-    <h1>Hello Page</h1>
-    <p>Hello, {name}!</p>
-    <p><a href="/">Back to Homepage</a></p>
-    """
+    return f"<h1>Hello Page</h1><p>Hello, {escape(name)}!</p>"
+
 
 @app.route('/execute')
 def execute():
-    command = request.args.get('cmd', 'ls -l')
-    # Insecure command execution!
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    return f"""
-    <h1>Execute Command Page</h1>
-    <p>Executing command: <code>{command}</code></p>
-    <pre>{result.stdout}</pre>
-    <pre style="color: red;">{result.stderr}</pre>
-    <p><a href="/">Back to Homepage</a></p>
-    """
+    key = request.args.get('cmd', 'date')
 
-@app.route('/admin')
-def admin():
-    return f"""
-    <h1>Admin Area</h1>
-    <p>Admin area - Secret Key: {app.config['SECRET_KEY']}</p>
-    <p><a href="/">Back to Homepage</a></p>
-    """
+    if key not in ALLOWED:
+        return "Commande non autorisée", 400
+
+    result = subprocess.run(
+        ALLOWED[key],
+        capture_output=True,
+        text=True
+    )
+
+    return (
+        f"<h1>Execute Command Page</h1>"
+        f"<pre>{escape(result.stdout)}</pre>"
+        f"<pre>{escape(result.stderr)}</pre>"
+    )
+
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    debug = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(debug=debug, host='0.0.0.0')
+
